@@ -7,6 +7,7 @@ var runSequence = require('run-sequence');
 var browserSync = require('browser-sync');
 var pagespeed = require('psi');
 var reload = browserSync.reload;
+var browserify = require('gulp-browserify');
 
 var AUTOPREFIXER_BROWSERS = [
 	'ie >= 10',
@@ -29,18 +30,30 @@ gulp.task('jshint', function () {
 		.pipe($.if(!browserSync.active, $.jshint.reporter('fail')));
 });
 
-gulp.task('uglify', function () {
+// gulp.task('uglify', function () {
+
+// 	return gulp.src(['src/assets/js/**/*.js', '!src/assets/js/lib/**'])
+// 		.pipe($.uglify())
+// 		.pipe(gulp.dest('build/assets/js'))
+// 		.pipe($.size({title: 'uglify'}));
+
+// });
+
+gulp.task('browserify', function () {
 
 	return gulp.src(['src/assets/js/**/*.js', '!src/assets/js/lib/**'])
+		.pipe(browserify({
+			insertGlobals : false
+		}))
 		.pipe($.uglify())
 		.pipe(gulp.dest('build/assets/js'))
-		.pipe($.size({title: 'uglify'}));
+		.pipe($.size({title: 'browserify'}));
 
 });
 
 // Optimize images
 gulp.task('images', function () {
-	return gulp.src('src/assets/img/**/*')
+	return gulp.src('src/assets/img/**/*.{gif,jpg,png,svg}')
 		.pipe($.cache($.imagemin({
 			progressive: true,
 			interlaced: true
@@ -52,27 +65,23 @@ gulp.task('images', function () {
 // Copy all files at the root level (src)
 gulp.task('copy', function () {
 	return gulp.src([
-		'src/*',
-		'!src/*.html'
+		'src/**',
+		'!src/*.html',
+		'!src/assets/js/*.js',
+		'!src/assets/js/app/**',
+		'!src/assets/img/**',
+		'!src/assets/css/**'
 	], {
 		dot: true
 	}).pipe(gulp.dest('build'))
 		.pipe($.size({title: 'copy'}));
 });
 
-// Copy web fonts to build
-gulp.task('fonts', function () {
-	return gulp.src(['src/assets/fonts/**'])
-		.pipe(gulp.dest('build/assets/fonts'))
-		.pipe($.size({title: 'fonts'}));
-});
-
 // Compile and automatically prefix stylesheets
 gulp.task('styles', function () {
 	// For best performance, don't add Sass partials to `gulp.src`
 	return gulp.src([
-			'src/assets/scss/*.scss',
-			'src/assets/css/**/*.css'
+			'src/assets/scss/**/*.scss'
 		])
 			.pipe($.sourcemaps.init())
 			.pipe($.changed('.tmp/styles', {extension: '.css'}))
@@ -82,9 +91,9 @@ gulp.task('styles', function () {
 			}))
 			.pipe($.autoprefixer({browsers: AUTOPREFIXER_BROWSERS}))
 			.pipe($.sourcemaps.write())
-			.pipe(gulp.dest('.tmp/styles'))
 			// Concatenate and minify styles
 			.pipe($.if('*.css', $.csso()))
+			.pipe(gulp.dest('src/assets/css'))
 			.pipe(gulp.dest('build/assets/css'))
 			.pipe($.size({title: 'styles'}));
 });
@@ -94,28 +103,55 @@ gulp.task('html', function () {
 	var assets = $.useref.assets({searchPath: '{.tmp,src}'});
 
 	return gulp.src('src/**/*.html')
-		.pipe(assets)
-		// Concatenate and minify JavaScript
-		// .pipe($.if('*.js', $.uglify({preserveComments: 'some'})))
+		.pipe(assets)	
 
 		// Concatenate and minify styles
 		// In case you are still using useref build blocks
 		.pipe($.if('*.css', $.csso()))
 		.pipe(assets.restore())
 		.pipe($.useref())
-		// Update production Style Guide paths
-		// .pipe($.replace('components/components.css', 'components/main.min.css'))
+
 		// Minify any HTML
 		.pipe($.if('*.html', $.minifyHtml()))
 		// Output files
 		.pipe(gulp.dest('build'))
 		.pipe($.size({title: 'html'}));
+
 });
 
 // Clean output directory
 gulp.task('clean', del.bind(null, ['.tmp', 'build/*', '!build/.git'], {dot: true}));
 
+// Watch files for changes & reload
+gulp.task('serve', ['styles'], function () {
+	browserSync({
+		notify: false,
+		logPrefix: 'WSK',
+		// https: true,
+		server: ['src']
+	});
+
+	gulp.watch(['src/**/*.html'], reload);
+	gulp.watch(['src/assets/scss/*.{scss,css}'], ['styles', reload]);
+	gulp.watch(['src/assets/js/**/*.js'], ['jshint', 'browserify', reload]);
+	gulp.watch(['src/assets/img/**/*'], reload);
+});
+
+// Build and serve the output from the dist build
+gulp.task('serve:build', ['styles'], function () {
+	browserSync({
+		notify: false,
+		logPrefix: 'WSK',
+		// https: true,
+		server: ['build']
+	});
+
+	gulp.watch(['src/**/*.html'], reload);
+	gulp.watch(['src/assets/scss/*.{scss,css}'], ['styles', reload]);
+	gulp.watch(['src/assets/js/**/*.js'], ['jshint', 'browserify', reload]);
+	gulp.watch(['src/assets/img/**/*'], reload);
+});
 
 gulp.task('default', ['clean'], function (cb) {
-	runSequence('styles', ['jshint', 'html', 'uglify', 'images', 'fonts', 'copy'], cb);
+	runSequence('styles', ['jshint', 'html', 'browserify', 'images', 'copy'], cb);
 });
