@@ -8,6 +8,11 @@
 
 			// -------------------------- App Vars --------------------------
 
+			// Requires
+			var SceneLoader = require('./app/loaders/SceneLoader.js');
+			var PointerLockControls = require('./app/controllers/PointerLockControls.js');
+			var CharacterController = require('./app/controllers/CharacterController.js')
+
 			// Selectors
 			var container = $('.app');
 			var containerWidth = window.innerWidth;
@@ -24,7 +29,6 @@
 			var colliders = [];
 
 			// Loaders
-			var SceneLoader = require('./app/loaders/SceneLoader.js');
 			var sceneLoader;
 
 			// -------------------------- Init ThreeJS --------------------------
@@ -38,7 +42,7 @@
 
 				// Camera
 				camera = new THREE.PerspectiveCamera( 2, containerWidth / containerHeight, 1, 15000 );
-				camera.position.set( 0, 0, 250 );
+				camera.position.set( 0, 0, -20 );
 
 				// Light
 				light = new THREE.AmbientLight( 0x404040 );
@@ -65,14 +69,10 @@
 
 			function buildScene() {
 
-				sceneLoader = new THREE.SceneLoader();
-				sceneLoader.load('assets/scenes/test/scene.json', addToScene);
-
-			}
-
-			function addToScene() {
-
-				scene.add(sceneLoader);
+				var sceneLoader = new THREE.SceneLoader();
+				sceneLoader.load('assets/scenes/test/scene.json', function (obj) {
+					scene.add(obj);
+				});
 
 			}
 
