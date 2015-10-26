@@ -1,6 +1,7 @@
 archive
 node_modules
 .tmp
+build
 
 ### OSX ###
 .DS_Store
